@@ -95,3 +95,15 @@ To learn more about React Native, take a look at the following resources:
 - [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
 - [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
 - [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+
+
+---
+
+## Entrées de l’application (native vs web)
+
+- Native (Android/iOS): l’entrée est `index.js`, utilisée par Metro et `AppRegistry`. Les commandes concernées sont:
+  - `npm start` (Metro), `npm run android`, `npm run ios`.
+- Web (navigateur): l’entrée est `src/main.tsx`, chargée par `index.html` et servie par Vite. Les commandes concernées sont:
+  - `npm run web` (dev), `npm run web:build`, `npm run web:preview`.
+
+Grâce à l’alias de Vite (`react-native` ➜ `react-native-web`), vos composants réutilisent la même base de code côté web.
