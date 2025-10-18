@@ -58,10 +58,8 @@ export const GameScreen = ({ holeSize, isPlaying }: any) => {
                         Math.pow(obj.x - playerPos.x, 2) + Math.pow(obj.y - playerPos.y, 2)
                     );
 
-                    if (distance < (holeSize / 2 / window.innerWidth) * 100) {
-                        return false;
-                    }
-                    return true;
+                    return distance >= (holeSize / 2 / window.innerWidth) * 100;
+
                 })
             );
         };
@@ -96,7 +94,7 @@ export const GameScreen = ({ holeSize, isPlaying }: any) => {
         >
             {/* Background Grid */}
             <div className="absolute inset-0 opacity-10">
-                <div className="absolute inset-0 bg-[linear-gradient(rgba(0,217,255,0.5)_1px,transparent_1px),linear-gradient(90deg,rgba(0,217,255,0.5)_1px,transparent_1px)] bg-[size:50px_50px]"></div>
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(0,217,255,0.5)_1px,transparent_1px),linear-gradient(90deg,rgba(0,217,255,0.5)_1px,transparent_1px)] bg-[size:50px_50px]" />
             </div>
 
             {/* Score Display */}
@@ -142,7 +140,7 @@ export const GameScreen = ({ holeSize, isPlaying }: any) => {
                     background: 'radial-gradient(circle, rgba(0,0,0,0.9) 0%, rgba(0,217,255,0.1) 100%)',
                 }}
             >
-                <div className="absolute inset-0 rounded-full border-2 border-cyan-400/30 animate-pulse"></div>
+                <div className="absolute inset-0 rounded-full border-2 border-cyan-400/30 animate-pulse" />
             </div>
         </div>
     );
