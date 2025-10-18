@@ -107,3 +107,11 @@ To learn more about React Native, take a look at the following resources:
   - `npm run web` (dev), `npm run web:build`, `npm run web:preview`.
 
 Grâce à l’alias de Vite (`react-native` ➜ `react-native-web`), vos composants réutilisent la même base de code côté web.
+
+## Tailwind CSS (web)
+
+- Installation des dépendances: `npm install` (ajoute tailwindcss, postcss, autoprefixer déjà déclarés).
+- Développement web: `npm run web` (Vite charge Tailwind via `src/index.css`).
+- Fichiers de config: `tailwind.config.ts`, `postcss.config.js`, `src/index.css`.
+- Utilisation: appliquez les classes utilitaires Tailwind dans `className` (déjà présentes dans vos composants).
+- Plateformes natives: Tailwind n’est actif que pour le build web via Vite; les apps Android/iOS n’incluent pas les CSS et continuent d’utiliser `index.js`.
