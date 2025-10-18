@@ -1,11 +1,8 @@
 import React, { useEffect } from 'react';
 
-// ============================================================
-// SPLASH SCREEN COMPONENT
-// ============================================================
 export const SplashScreen = ({ onFinish } : any) => {
     useEffect(() => {
-        const timer = setTimeout(onFinish, 3000);
+        const timer = setTimeout(onFinish, 1000);
         return () => clearTimeout(timer);
     }, [onFinish]);
 

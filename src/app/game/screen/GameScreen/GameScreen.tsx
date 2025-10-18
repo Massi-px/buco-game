@@ -12,6 +12,7 @@ type GameObject = {
 export const GameScreen = ({ holeSize, isPlaying }: any) => {
     const [gameObjects, setGameObjects] = useState<GameObject[]>([]);
     const [playerPos, setPlayerPos] = useState({ x: 50, y: 50 });
+    const [localHoleSize, setLocalHoleSize] = useState<number>(holeSize);
     const gameRef = useRef<HTMLDivElement | null>(null);
 
     useEffect(() => {
@@ -52,21 +53,41 @@ export const GameScreen = ({ holeSize, isPlaying }: any) => {
         if (!isPlaying) return;
 
         const checkCollisions = () => {
-            setGameObjects((prev) =>
-                prev.filter((obj) => {
+            if (!gameRef.current) return;
+
+            const rect = gameRef.current.getBoundingClientRect();
+            const containerWidth = rect.width || window.innerWidth;
+            const growthFactor = 0.35; // how much hole grows relative to swallowed object size (px)
+
+            setGameObjects((prev) => {
+                let swallowedTotalPx = 0;
+
+                const remaining = prev.filter((obj) => {
+                    const holeRadiusPercent = (localHoleSize / 2) / containerWidth * 100;
+                    const objRadiusPercent = (obj.size / 2) / containerWidth * 100;
+
                     const distance = Math.sqrt(
                         Math.pow(obj.x - playerPos.x, 2) + Math.pow(obj.y - playerPos.y, 2)
                     );
 
-                    return distance >= (holeSize / 2 / window.innerWidth) * 100;
+                    const collided = distance < (holeRadiusPercent + objRadiusPercent);
+                    if (collided) {
+                        swallowedTotalPx += obj.size;
+                    }
+                    return !collided;
+                });
 
-                })
-            );
+                if (swallowedTotalPx > 0) {
+                    setLocalHoleSize((prevSize) => prevSize + swallowedTotalPx * growthFactor);
+                }
+
+                return remaining;
+            });
         };
 
         const collisionInterval = window.setInterval(checkCollisions, 50);
         return () => window.clearInterval(collisionInterval);
-    }, [playerPos, holeSize, isPlaying]);
+    }, [playerPos, localHoleSize, isPlaying]);
 
     const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
         if (!gameRef.current) return;
@@ -103,12 +124,6 @@ export const GameScreen = ({ holeSize, isPlaying }: any) => {
                 <div className="text-4xl font-black text-cyan-400">{gameObjects.length}</div>
             </div>
 
-            {/* Hole Size Display */}
-            <div className="absolute top-6 right-6 z-50 text-right">
-                <div className="text-sm text-slate-400">Taille</div>
-                <div className="text-4xl font-black text-cyan-400">{Math.floor(holeSize)}px</div>
-            </div>
-
             {/* Game Objects */}
             {gameObjects.map((obj) => (
                 <div
@@ -128,12 +143,12 @@ export const GameScreen = ({ holeSize, isPlaying }: any) => {
 
             {/* Player Hole */}
             <div
-                className="absolute rounded-full pointer-events-none transition-all duration-100"
+                className="absolute rounded-full pointer-events-none transition-100"
                 style={{
                     left: `${playerPos.x}%`,
                     top: `${playerPos.y}%`,
-                    width: `${holeSize}px`,
-                    height: `${holeSize}px`,
+                    width: `${localHoleSize}px`,
+                    height: `${localHoleSize}px`,
                     transform: 'translate(-50%, -50%)',
                     boxShadow: `0 0 50px rgba(0, 217, 255, 0.8), inset 0 0 20px rgba(0, 0, 0, 0.9)`,
                     border: '3px solid #00D9FF',
