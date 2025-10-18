@@ -10,91 +10,137 @@ type GameObject = {
 };
 
 export const GameScreen = ({ holeSize, isPlaying }: any) => {
-    const [gameObjects, setGameObjects] = useState<GameObject[]>([]);
+    const [renderObjects, setRenderObjects] = useState<GameObject[]>([]);
     const [playerPos, setPlayerPos] = useState({ x: 50, y: 50 });
-    const [localHoleSize, setLocalHoleSize] = useState<number>(holeSize);
+    const [renderHoleSize, setRenderHoleSize] = useState<number>(holeSize);
+    const [score, setScore] = useState<number>(0);
+
     const gameRef = useRef<HTMLDivElement | null>(null);
 
-    useEffect(() => {
-        const generateObjects = () => {
-            const newObjects = Array.from({ length: 15 }, (_, _i) => ({
-                id: Math.random(),
-                x: Math.random() * 100,
-                y: Math.random() * 100,
-                size: Math.random() * 15 + 8,
-                color: ['#FF1493', '#00D9FF', '#00FF00', '#FFD700', '#FF6B35'][Math.floor(Math.random() * 5)],
-            })) as GameObject[];
-            setGameObjects(newObjects);
-        };
+    // Mutable refs for high-frequency updates inside the requestAnimationFrame loop
+    const objectsRef = useRef<GameObject[]>([]);
+    const holeSizeRef = useRef<number>(holeSize);
+    const scoreRef = useRef<number>(0);
+    const isPlayingRef = useRef<boolean>(!!isPlaying);
+    const playerPosRef = useRef<{ x: number; y: number }>({ x: 50, y: 50 });
 
-        generateObjects();
+    // rAF bookkeeping
+    const rafIdRef = useRef<number | null>(null);
+    const lastTimeRef = useRef<number | null>(null);
+    const spawnElapsedRef = useRef<number>(0);
+
+    const createRandomObject = (): GameObject => ({
+        id: Math.random(),
+        x: Math.random() * 100,
+        y: Math.random() * 100,
+        size: Math.random() * 15 + 8,
+        color: ['#FF1493', '#00D9FF', '#00FF00', '#FFD700', '#FF6B35'][Math.floor(Math.random() * 5)],
+    });
+
+    useEffect(() => {
+        const initial = Array.from({ length: 15 }, createRandomObject);
+        objectsRef.current = initial;
+        setRenderObjects(initial);
+        scoreRef.current = 0;
+        setScore(0);
     }, []);
 
+    // Keep isPlaying in a ref so the loop can read a stable value
     useEffect(() => {
-        if (!isPlaying) return;
-
-        const spawnInterval = window.setInterval(() => {
-            setGameObjects((prev) => [
-                ...prev,
-                {
-                    id: Math.random(),
-                    x: Math.random() * 100,
-                    y: Math.random() * 100,
-                    size: Math.random() * 15 + 8,
-                    color: ['#FF1493', '#00D9FF', '#00FF00', '#FFD700', '#FF6B35'][Math.floor(Math.random() * 5)],
-                },
-            ]);
-        }, 2000);
-
-        return () => window.clearInterval(spawnInterval);
+        isPlayingRef.current = !!isPlaying;
     }, [isPlaying]);
 
+    // Main game loop using requestAnimationFrame — avoids setInterval and busy while-loops
     useEffect(() => {
-        if (!isPlaying) return;
+        let disposed = false;
 
-        const checkCollisions = () => {
-            if (!gameRef.current) return;
+        const growthFactor = 0.35; // how much the hole grows relative to swallowed object size (px)
+        const spawnEveryMs = 2000;
 
-            const rect = gameRef.current.getBoundingClientRect();
-            const containerWidth = rect.width || window.innerWidth;
-            const growthFactor = 0.35; // how much hole grows relative to swallowed object size (px)
+        const loop = (t: number) => {
+            if (disposed) return;
 
-            setGameObjects((prev) => {
-                let swallowedTotalPx = 0;
+            const last = lastTimeRef.current ?? t;
+            const dt = Math.min(100, t - last); // clamp delta to avoid huge jumps
+            lastTimeRef.current = t;
 
-                const remaining = prev.filter((obj) => {
-                    const holeRadiusPercent = (localHoleSize / 2) / containerWidth * 100;
-                    const objRadiusPercent = (obj.size / 2) / containerWidth * 100;
+            // Read current mutable data
+            const curObjects = objectsRef.current;
+            let changed = false;
 
-                    const distance = Math.sqrt(
-                        Math.pow(obj.x - playerPos.x, 2) + Math.pow(obj.y - playerPos.y, 2)
-                    );
-
-                    const collided = distance < (holeRadiusPercent + objRadiusPercent);
-                    if (collided) {
-                        swallowedTotalPx += obj.size;
-                    }
-                    return !collided;
-                });
-
-                if (swallowedTotalPx > 0) {
-                    setLocalHoleSize((prevSize) => prevSize + swallowedTotalPx * growthFactor);
+            if (isPlayingRef.current) {
+                // Spawn logic
+                spawnElapsedRef.current += dt;
+                while (spawnElapsedRef.current >= spawnEveryMs) {
+                    spawnElapsedRef.current -= spawnEveryMs;
+                    curObjects.push(createRandomObject());
+                    changed = true;
                 }
 
-                return remaining;
-            });
+                // Collision detection (once per frame)
+                const container = gameRef.current;
+                if (container) {
+                    const rect = container.getBoundingClientRect();
+                    const containerWidth = rect.width || window.innerWidth;
+
+                    let swallowedTotalPx = 0;
+                    const holeRadiusPct = (holeSizeRef.current / 2) / containerWidth * 100;
+
+                    const remaining: GameObject[] = [];
+                    const p = playerPosRef.current;
+                    for (let i = 0; i < curObjects.length; i++) {
+                        const obj = curObjects[i];
+                        const objRadiusPct = (obj.size / 2) / containerWidth * 100;
+                        const dx = obj.x - p.x;
+                        const dy = obj.y - p.y;
+                        const distance = Math.hypot(dx, dy);
+                        const collided = distance < (holeRadiusPct + objRadiusPct);
+                        if (collided) {
+                            swallowedTotalPx += obj.size;
+                        } else {
+                            remaining.push(obj);
+                        }
+                    }
+
+                    if (swallowedTotalPx > 0) {
+                        holeSizeRef.current = holeSizeRef.current + swallowedTotalPx * growthFactor;
+                        scoreRef.current += 1;
+                        changed = true;
+                    }
+
+                    if (changed) {
+                        objectsRef.current = remaining;
+                    }
+                }
+            }
+
+            if (changed) {
+                setRenderObjects([...objectsRef.current]);
+                setRenderHoleSize(holeSizeRef.current);
+                setScore(scoreRef.current);
+            }
+
+            rafIdRef.current = requestAnimationFrame(loop);
         };
 
-        const collisionInterval = window.setInterval(checkCollisions, 50);
-        return () => window.clearInterval(collisionInterval);
-    }, [playerPos, localHoleSize, isPlaying]);
+        rafIdRef.current = requestAnimationFrame(loop);
+
+        return () => {
+            disposed = true;
+            if (rafIdRef.current != null) cancelAnimationFrame(rafIdRef.current);
+            rafIdRef.current = null;
+            lastTimeRef.current = null;
+        };
+    }, []);
 
     const handleMouseMove = (e: MouseEvent<HTMLDivElement>) => {
         if (!gameRef.current) return;
         const rect = gameRef.current.getBoundingClientRect();
         const x = (e.clientX - rect.left) / rect.width * 100;
         const y = (e.clientY - rect.top) / rect.height * 100;
-        setPlayerPos({ x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) });
+        const next = { x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) };
+        playerPosRef.current = next;
+        setPlayerPos(next);
     };
 
     const handleTouchMove = (e: TouchEvent<HTMLDivElement>) => {
@@ -102,7 +148,9 @@ export const GameScreen = ({ holeSize, isPlaying }: any) => {
             const rect = gameRef.current.getBoundingClientRect();
             const x = (e.touches[0].clientX - rect.left) / rect.width * 100;
             const y = (e.touches[0].clientY - rect.top) / rect.height * 100;
-            setPlayerPos({ x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) });
+            const next = { x: Math.max(0, Math.min(100, x)), y: Math.max(0, Math.min(100, y)) };
+            playerPosRef.current = next;
+            setPlayerPos(next);
         }
     };
 
@@ -121,11 +169,11 @@ export const GameScreen = ({ holeSize, isPlaying }: any) => {
             {/* Score Display */}
             <div className="absolute top-6 left-6 z-50 text-white">
                 <div className="text-sm text-slate-400">Score</div>
-                <div className="text-4xl font-black text-cyan-400">{gameObjects.length}</div>
+                <div className="text-4xl font-black text-cyan-400">{score}</div>
             </div>
 
             {/* Game Objects */}
-            {gameObjects.map((obj) => (
+            {renderObjects.map((obj) => (
                 <div
                     key={obj.id}
                     className="absolute rounded-lg transition-all duration-100 cursor-pointer hover:scale-110"
@@ -147,8 +195,8 @@ export const GameScreen = ({ holeSize, isPlaying }: any) => {
                 style={{
                     left: `${playerPos.x}%`,
                     top: `${playerPos.y}%`,
-                    width: `${localHoleSize}px`,
-                    height: `${localHoleSize}px`,
+                    width: `${renderHoleSize}px`,
+                    height: `${renderHoleSize}px`,
                     transform: 'translate(-50%, -50%)',
                     boxShadow: `0 0 50px rgba(0, 217, 255, 0.8), inset 0 0 20px rgba(0, 0, 0, 0.9)`,
                     border: '3px solid #00D9FF',

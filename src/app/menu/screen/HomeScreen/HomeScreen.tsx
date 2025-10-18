@@ -6,15 +6,12 @@ import { Play, Download } from 'lucide-react';
 export const MenuScreen = ({ onPlay, isMobile, canDownload }: any) => {
     return (
         <div className="w-full h-screen bg-gradient-to-b from-slate-950 via-slate-900 to-black flex flex-col items-center justify-center px-4">
-            {/* Background Elements */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
                 <div className="absolute w-96 h-96 bg-cyan-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 -top-40 -left-40" />
                 <div className="absolute w-96 h-96 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 -bottom-40 -right-40" />
             </div>
 
-            {/* Content */}
             <div className="relative z-10 text-center max-w-md w-full">
-                {/* Logo */}
                 <div className="mb-12">
                     <div className="w-40 h-40 mx-auto relative mb-6">
                         <div className="absolute inset-0 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full blur-2xl opacity-75 animate-pulse" />
@@ -24,7 +21,7 @@ export const MenuScreen = ({ onPlay, isMobile, canDownload }: any) => {
                     </div>
 
                     <h1 className="text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 mb-2">
-                        HOLE.IO
+                        BUCO
                     </h1>
                     <p className="text-cyan-300 text-lg">Avale. Grandir. Dominer.</p>
                 </div>
@@ -47,7 +44,6 @@ export const MenuScreen = ({ onPlay, isMobile, canDownload }: any) => {
                     </div>
                 </div>
 
-                {/* Buttons */}
                 <div className="space-y-4">
                     <button
                         onClick={onPlay}
